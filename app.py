@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
-import subprocess, tempfile, os
-import requests
+import subprocess, tempfile, os, urllib.request
 import cloudinary
 import cloudinary.uploader
 
@@ -19,12 +18,10 @@ def pitch():
     semitoni = data.get('semitoni', 2)
     pitch_factor = 2 ** (semitoni / 12)
 
-    response = requests.get(url, allow_redirects=True)
-    
     with tempfile.NamedTemporaryFile(suffix='.m4a', delete=False) as inp:
-        inp.write(response.content)
+        urllib.request.urlretrieve(url, inp.name)
         inp_name = inp.name
-    
+
     out = inp_name.replace('.m4a', '_out.m4a')
     subprocess.run(['ffmpeg', '-i', inp_name, '-af',
                     f'rubberband=pitch={pitch_factor}:tempo=1.1',
