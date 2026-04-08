@@ -14,6 +14,10 @@ cloudinary.config(
 
 @app.route('/pitch', methods=['POST'])
 def pitch():
+    print(f"Content-Type: {request.content_type}")
+    print(f"Form data: {request.form}")
+    print(f"Args: {request.args}")
+
     # --- Ricevi il file: binario diretto O JSON con url ---
     if request.content_type and 'multipart/form-data' in request.content_type:
         # File inviato come form-data (upload binario da n8n)
@@ -46,9 +50,15 @@ def pitch():
     pitch_factor = 2 ** (semitoni / 12)
     out = inp_name.replace('.m4a', '_out.mp3')
 
+    print(f"Semitoni: {semitoni}, Pitch factor: {pitch_factor}, Tempo: {tempo_factor}")
+
+    # Pitch e tempo separati per evitare interferenze
+    af_filters = f'rubberband=pitch={pitch_factor}'
+    if tempo_factor != 1.0:
+        af_filters += f',atempo={tempo_factor}'
+
     subprocess.run([
-        'ffmpeg', '-i', inp_name, '-af',
-        f'rubberband=pitch={pitch_factor}:tempo={tempo_factor}',
+        'ffmpeg', '-i', inp_name, '-af', af_filters,
         '-codec:a', 'libmp3lame', '-q:a', '2',
         out, '-y'
     ], check=True)
