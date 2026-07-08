@@ -13,7 +13,7 @@ cloudinary.config(
 
 
 def _cleanup(*paths):
-    """Rimuove i file temporanei ignorando quelli già assenti."""
+    """Rimuove i file temporanei ignorando quelli gia' assenti."""
     for p in paths:
         if p and os.path.exists(p):
             try:
@@ -27,10 +27,10 @@ def pitch():
     inp_name = None
     out = None
     try:
-        print(f"Content-Type: {request.content_type}")
-        print(f"Cloudinary cloud: {os.environ.get('CLOUDINARY_CLOUD_NAME')}")
-        print(f"Cloudinary key set: {bool(os.environ.get('CLOUDINARY_API_KEY'))}")
-        print(f"Cloudinary secret set: {bool(os.environ.get('CLOUDINARY_API_SECRET'))}")
+        print(f"Content-Type: {request.content_type}", flush=True)
+        print(f"Cloudinary cloud: {os.environ.get('CLOUDINARY_CLOUD_NAME')}", flush=True)
+        print(f"Cloudinary key set: {bool(os.environ.get('CLOUDINARY_API_KEY'))}", flush=True)
+        print(f"Cloudinary secret set: {bool(os.environ.get('CLOUDINARY_API_SECRET'))}", flush=True)
 
         if request.content_type and 'multipart/form-data' in request.content_type:
             file = request.files['file']
@@ -64,7 +64,7 @@ def pitch():
         if tempo_factor != 1.0:
             af_filters += f',atempo={tempo_factor}'
 
-        # --- ffmpeg con cattura esplicita di stderr ---
+        # --- ffmpeg con cattura esplicita di stderr + log su Railway ---
         try:
             subprocess.run(
                 ['ffmpeg', '-i', inp_name, '-af', af_filters,
@@ -72,6 +72,10 @@ def pitch():
                 check=True, capture_output=True, text=True
             )
         except subprocess.CalledProcessError as ff_err:
+            print("=== FFMPEG FAILED ===", flush=True)
+            print("returncode:", ff_err.returncode, flush=True)
+            print("stderr:", ff_err.stderr, flush=True)
+            print("af_filters:", af_filters, flush=True)
             return jsonify({
                 'stage': 'ffmpeg',
                 'returncode': ff_err.returncode,
@@ -85,6 +89,9 @@ def pitch():
                 out, resource_type='video', format='mp3'
             )
         except Exception as cloud_err:
+            print("=== CLOUDINARY UPLOAD FAILED ===", flush=True)
+            print("error:", str(cloud_err), flush=True)
+            print("type:", type(cloud_err).__name__, flush=True)
             return jsonify({
                 'stage': 'cloudinary_upload',
                 'error': str(cloud_err),
@@ -94,6 +101,8 @@ def pitch():
         return jsonify({'url': upload_result['secure_url']})
 
     except Exception as e:
+        print("=== GENERAL ERROR ===", flush=True)
+        print(traceback.format_exc(), flush=True)
         return jsonify({
             'stage': 'general',
             'error': str(e),
